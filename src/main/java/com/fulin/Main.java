@@ -1,6 +1,6 @@
 package com.fulin;
 
-import com.fulin.lock.FulinSpinLock;
+import com.fulin.lock.FulinAQSLock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class Main {
         int[] count = new int[]{1000};
         List<Thread> threadList = new ArrayList<>();
 
-        FulinSpinLock lock = new FulinSpinLock();
+        FulinAQSLock lock = new FulinAQSLock();
         for(int i = 0; i < 100; i++){
             threadList.add(new Thread(()->{
                 lock.lock();

@@ -3,6 +3,7 @@ package com.fulin.lock;
 import com.fulin.lock.template.AbstractFulinLock;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
@@ -12,7 +13,7 @@ import java.util.concurrent.locks.LockSupport;
  * @DateTime: 2025/4/8 下午11:50
  **/
 public class FulinAQSLock extends AbstractFulinLock {
-    AtomicBoolean flag = new AtomicBoolean(false);
+    AtomicInteger state = new AtomicInteger(0);
 
     Thread owner = null;
 
@@ -22,11 +23,19 @@ public class FulinAQSLock extends AbstractFulinLock {
     AtomicReference<Node> tail = new AtomicReference<>(head.get());
 
     public void lock() {
-        // 此处存在则该锁为非公平锁，此处不存在该锁为公平锁
-        if (flag.compareAndSet(false, true)) {
-            System.out.println(Thread.currentThread().getName() + "获得锁");
-            owner = Thread.currentThread();
-            return;
+        if(state.get() == 0){
+            // 此处存在则该锁为非公平锁，此处不存在该锁为公平锁
+            if (state.compareAndSet(0, 1)) {
+                System.out.println(Thread.currentThread().getName() + "获得锁");
+                owner = Thread.currentThread();
+                return;
+            }
+        }else{
+            if(owner == Thread.currentThread()){
+                state.incrementAndGet();
+                System.out.println(Thread.currentThread().getName() + "获得重入锁，重入次数为"+  state.get());
+                return;
+            }
         }
 
         Node current = new Node();
@@ -41,7 +50,7 @@ public class FulinAQSLock extends AbstractFulinLock {
             }
         }
         while(true){
-            if(current.pre == head.get() && flag.compareAndSet(false,true)){
+            if(current.pre == head.get() && state.compareAndSet(0, 1)){
                 owner = Thread.currentThread();
                 // 只有持有锁的线程能进入，本就是线程安全的
                 head.set(current);
@@ -59,9 +68,21 @@ public class FulinAQSLock extends AbstractFulinLock {
             throw new IllegalStateException("当前线程不是锁的拥有者，无法解锁！");
         }
 
+        int i = state.get();
+        if (i > 1){
+            // 因为这里只有同一个线程进行操作，不需要关心线程安全
+            state.set(i-1);
+            System.out.println(Thread.currentThread().getName() + "解锁重入锁，重入次数为"+  state.get());
+            return;
+        }
+
+        if(i<=0){
+            throw new IllegalStateException("没有重入次数，重入锁解锁错误！");
+        }
+
         Node headNode = head.get();
         Node next = headNode.next;
-        flag.set(false);
+        state.set(0);
         if(next != null){
             System.out.println(Thread.currentThread().getName() + "释放锁，唤醒下一个线程"+ next.thread.getName());
             LockSupport.unpark(next.thread);

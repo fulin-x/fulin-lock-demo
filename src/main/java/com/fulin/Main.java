@@ -16,18 +16,24 @@ public class Main {
         List<Thread> threadList = new ArrayList<>();
 
         FulinAQSLock lock = new FulinAQSLock();
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 10; i++){
             threadList.add(new Thread(()->{
-                lock.lock();
                 for(int j = 0; j < 10; j++){
-                    try {
-                        Thread.sleep(2);
-                    } catch (InterruptedException e){
-                        throw new RuntimeException(e);
-                    }
+                    lock.lock();
                     count[0]--;
                 }
-                lock.unlock();
+
+//                for(int j = 0; j < 10; j++){
+//                    try {
+//                        Thread.sleep(2);
+//                    } catch (InterruptedException e){
+//                        throw new RuntimeException(e);
+//                    }
+//                    count[0]--;
+//                }
+                for(int j = 0; j < 10; j++){
+                    lock.unlock();
+                }
             }));
         }
 
